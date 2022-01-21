@@ -1,1 +1,1 @@
-# thesis_code_simulating_bias_in_scientific_discovery
+# Thesis code, Januari 2022
