@@ -1,9 +1,7 @@
 from Machine import Machine
 from Agent import Agent
-import random
 import matplotlib.pyplot as plt
 import numpy as np
-
 
 # Main environment
 
@@ -12,22 +10,22 @@ if __name__ == "__main__":
     # -------------------Model Parameters_________________
 
     # Internal limiters
-    ACCEPTANCE_THRESHOLD = 0.90
+    ACCEPTANCE_THRESHOLD = 0.75
     COMPLEXITY_LIMIT = 7
     DATA_LIMIT = 25
 
     # Finite State Machine dictionary
-    alphabet = ['a', 'b', 'c']
+    alphabet = ['a', 'b', 'c', 'd', 'e', 'f']
 
     # Data, Finite State Machines and agents
     data_pool = []
-    fst_pool  = []
+    fst_pool = []
     agents_pool = []
 
     # Variables to be changed for experimental setup
-    NMR_OF_DATA_POINTS = 50  # 500
-    NMR_OF_FSTS = 5  # 100
-    NMR_OF_AGENTS = 1  # 60
+    NMR_OF_DATA_POINTS = 50  # 50
+    NMR_OF_FSTS = 30  # 30
+    NMR_OF_AGENTS = 100  # 100
 
     # __________________________________________________________________________________________________________________
 
@@ -50,8 +48,18 @@ if __name__ == "__main__":
     # Run Experimental setup
 
     biases = []
+
+    accuracies = []
     structure_similarities = []
-    results = []
+    sizes = []
+    nr_of_transitions = []
+
+    data_std = []
+    structure_std = []
+    size_std = []
+    transitions_std = []
+
+    # Percentage bar
 
     percentage = 0
     count = 0
@@ -61,11 +69,11 @@ if __name__ == "__main__":
     progress_bar_2 = "]"
     bar_string = ""
 
+    # Agent training
+
     for agent in agents_pool:
-        # Changed: Now iterate new data pool for every agent
         data_pool = agent.create_data(NMR_OF_DATA_POINTS, DATA_LIMIT)
 
-        # Progress bar, works fine, don't touch
         for i in progress_bar_1:
             bar_string = bar_string + i
         print(bar_string + progress_bar_2 + " " + str(percentage) + "%")
@@ -77,29 +85,103 @@ if __name__ == "__main__":
         for fst in fst_pool:
             while agent.model_not_done(COMPLEXITY_LIMIT, ACCEPTANCE_THRESHOLD):
                 agent.build_model(fst, data_pool, COMPLEXITY_LIMIT)
-            agent.results_pool.append(agent.accuracy)
-            agent.agent_machine.show_fsm()
-            fst.show_fsm()
-            #agent.structure_pool.append((agent.check_structure_similarity(fst)))
+
+            # Add agent results to relevant result pools
+
+            agent.accuracy_pool.append(agent.accuracy)
+            agent.structure_pool.append((agent.check_structure_similarity(fst)))
+            agent.size_pool.append(len(agent.agent_machine.transition_table) == len(fst.transition_table))
+            agent.nr_of_transitions_pool.append(agent.number_of_transitions())
             agent.reset()
 
         # Summarise results
+
         biases.append(agent.BIAS)
-        results.append(np.mean(agent.results_pool))
+        accuracies.append(np.mean(agent.accuracy_pool))
         structure_similarities.append(np.mean(agent.structure_pool))
+        sizes.append(sum(agent.size_pool) / len(agent.size_pool))
+        nr_of_transitions.append((np.mean(agent.nr_of_transitions_pool)))
+
+        data_std.append(np.std(agent.accuracy_pool))
+        structure_std.append(np.std(agent.structure_pool))
+        size_std.append(np.std(agent.size_pool))
+        transitions_std.append(np.std(agent.nr_of_transitions_pool))
 
     print("")
     print("Done!")
 
+    # Chance agent training
+
+    chance_agent = Agent(alphabet, 0)
+
+    for fst in fst_pool:
+        chance_agent.agent_machine.define_random_fsm()
+        chance_agent.accuracy_pool.append(chance_agent.accuracy)
+        chance_agent.structure_pool.append(chance_agent.check_structure_similarity(fst))
+        chance_agent.size_pool.append(chance_agent.agent_machine.transition_table == len(fst.transition_table))
+        chance_agent.nr_of_transitions_pool.append(chance_agent.number_of_transitions())
+        chance_agent.reset()
+
+    chance_fit = np.mean(chance_agent.accuracy_pool)
+    chance_size_match = sum(chance_agent.size_pool) / len(chance_agent.size_pool)
+    chance_structure_match = np.mean(chance_agent.structure_pool)
+    chance_nr_of_transitions = np.mean(chance_agent.nr_of_transitions_pool)
+
     # Display results
 
-    print("Bias: "  + str(biases))
-    print("Accuracy: " + str(results))
-    print("Structure similarity: " + str(structure_similarities))
-    plt.bar(biases, results, width=0.01)
-    plt.suptitle("bias factor vs. averaged model accuracy")
-    plt.xlim(0, 1)
-    plt.xlabel("Bias factor")
-    plt.ylim(0, 1)
-    plt.ylabel("Average prediction accuracy")
+    fig, axs = plt.subplots(2, 2)
+
+    # Irrationality vs fit on data
+
+    axs[0, 0].plot(biases, accuracies, label='Scientific agent')
+    axs[0, 0].fill_between(biases, np.array(accuracies) - np.array(data_std), np.array(accuracies) + np.array(data_std),
+                           alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
+    axs[0, 0].plot(biases, np.full(len(biases), chance_fit), label='Chance level')
+    axs[0, 0].set_title('Agent irrationality VS fit on data')
+    axs[0, 0].set(xlabel=' Irrationality factor', ylabel='Average fit on data')
+    axs[0, 0].set_xlim([0, 1])
+    axs[0, 0].set_ylim([0, 1])
+    axs[0, 0].legend()
+
+    # Irrationality vs structure similarity match
+
+    axs[0, 1].plot(biases, structure_similarities, label='Scientific agent')
+    axs[0, 1].fill_between(biases, np.array(structure_similarities) - np.array(structure_std),
+                           np.array(structure_similarities) + np.array(structure_std), alpha=0.5, edgecolor='#CC4F1B',
+                           facecolor='#FF9848')
+    axs[0, 1].plot(biases, np.full(len(biases), chance_structure_match), label='Chance level')
+    axs[0, 1].set_title('Agent irrationality VS structure similarity match')
+    axs[0, 1].set(xlabel=' Irrationality factor', ylabel='Average structure similarity')
+    axs[0, 1].set_xlim([0, 1])
+    axs[0, 1].set_ylim(bottom=0)
+    axs[0, 1].legend()
+
+    # Irrationality vs structure size match
+
+    axs[1, 0].plot(biases, sizes, label='Scientific agent')
+    axs[1, 0].fill_between(biases, np.array(sizes) - np.array(size_std), np.array(sizes) + np.array(size_std),
+                           alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
+    axs[1, 0].plot(biases, np.full(len(biases), chance_size_match), label='Chance level')
+    axs[1, 0].set_title('Agent irrationality VS structure size match')
+    axs[1, 0].set(xlabel=' Irrationality factor', ylabel='% size match')
+    axs[1, 0].set_xlim([0, 1])
+    axs[1, 0].set_ylim(bottom=0)
+    axs[1, 0].legend()
+
+    # Irrationality vs nr_of_transitions
+
+    axs[1, 1].plot(biases, nr_of_transitions, label='Scientific agent')
+    axs[1, 1].fill_between(biases, np.array(nr_of_transitions) - np.array(transitions_std),
+                           np.array(nr_of_transitions) + np.array(transitions_std), alpha=0.5, edgecolor='#CC4F1B',
+                           facecolor='#FF9848')
+    axs[1, 1].plot(biases, np.full(len(biases), chance_nr_of_transitions), label='Chance level')
+    axs[1, 1].set_title('Agent irrationality VS average number of transitions')
+    axs[1, 1].set(xlabel=' Irrationality factor', ylabel='Nr of transitions')
+    axs[1, 1].set_xlim([0, 1])
+    axs[1, 1].set_ylim(bottom=0)
+    axs[1, 1].legend()
+
+    fig.suptitle(
+        "The irrationality factor of scientific agents and how it affects various aspects of their created theories")
+
     plt.show()

@@ -12,9 +12,12 @@ class Agent:
     accuracy = 0
     number_of_states = 0
     # ______________________
-    # Pools results over all FSTs
-    results_pool = []
+    # Result pools used to store various aspects of FSTs
+    accuracy_pool = []
     structure_pool = []
+    size_pool = []
+    nr_of_transitions_pool = []
+
     # ______________________
     alphabet = None
     BIAS = 0
@@ -35,6 +38,8 @@ class Agent:
         # Variable used for reverting model if needed
 
         previous_state = copy.deepcopy(self.agent_machine)
+
+        self.number_of_states = len(self.agent_machine.transition_table)
 
         if self.number_of_states == 0:
             base_state = State.State('q0', {})
@@ -63,9 +68,6 @@ class Agent:
 
         self.accuracy = self.check_model_accuracy(unidentified_machine, data)
         self.number_of_states = len(self.agent_machine.transition_table)
-
-# FIX!!!!!!        if self.number_of_states == comp_lim + 1:
-#            self.agent_machine.transition_table.pop(len(self.agent_machine.transition_table))
 
         pass
 
@@ -122,7 +124,7 @@ class Agent:
     def model_not_done(self, comp_lim, acc_thresh):
         return self.number_of_states < comp_lim + 1 and self.accuracy < acc_thresh
 
-    # Compare structure of agent machine compared to unidentified machine !!!!!!!!!!!!!!! Want to look from perspective of agent machine
+    # Compare structure of agent machine compared to unidentified machine
     def check_structure_similarity(self, unidentified_machine):
         structure_similarity = []
         wrong_states = 0
@@ -152,6 +154,7 @@ class Agent:
                     unidentified_machine.transition_table[excess].next_states.keys())
                 total_states = total_states + len(unidentified_machine.transition_table[excess].next_states.keys())
         else:
+            excess_transitions = 0
             for state in range(0, len(self.agent_machine.transition_table)):
                 wrong_states, total_states = self.check_state_accuracy(unidentified_machine.transition_table[state], self.agent_machine.transition_table[state])
 
@@ -173,7 +176,7 @@ class Agent:
                     all_states = all_states + 1
             if agent_machine.next_states.keys().__contains__(letter) and not unknown_machine.next_states.keys().__contains__(letter) or not agent_machine.next_states.keys().__contains__(letter) and unknown_machine.next_states.keys().__contains__(letter):
                 wrong_states = wrong_states + 1
-                all_states = all_states +1
+                all_states = all_states + 1
 
         return wrong_states, all_states
 
@@ -190,3 +193,8 @@ class Agent:
             data_pool.append(data_point)
         return data_pool
 
+    def number_of_transitions(self):
+        number_of_transitions = 0
+        for i in self.agent_machine.transition_table:
+            number_of_transitions = number_of_transitions + len(i.next_states)
+        return number_of_transitions

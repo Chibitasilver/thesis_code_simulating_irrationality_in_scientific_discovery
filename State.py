@@ -39,9 +39,11 @@ class State(object):
     def possible_to_continue(self, letter):
         return list(self.next_states.keys()).__contains__(letter)
 
+    # Checker to establish whether or not a transition with a given letter exists
     def contains(self, letter):
         return list(self.next_states.keys()).__contains__(letter)
 
+    # Setter function, converting all necessary variables into a dictionary entry and adding it to a dictionary
     def add_to_dictionary(self, non_present_letters, state, any_letter):
         self.next_states[non_present_letters] = (state, any_letter)
         pass
