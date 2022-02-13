@@ -1,1 +1,1 @@
-# Thesis code, Januari 2022
+# Thesis: Researching the effects of irrational behaviour on scientific agents
